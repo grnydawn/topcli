@@ -1,0 +1,4 @@
+{
+  "tests/test_topcli.py::test_content": true, 
+  "tests/test_topcli.py::test_noarg": true
+}
