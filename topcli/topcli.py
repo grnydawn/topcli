@@ -15,7 +15,7 @@ def entry():
 def main(argv):
 
     def _show_usage():
-        print("Usage: perform task [input [input ...]] [option [option ...]] [ -- task ...]")
+        print("Usage: perform task [arguments ...] [ -- task [arguments ...]] ...")
 
     # handle entry options
     if not argv or argv[0] in ("-h", "--help"):
@@ -30,7 +30,9 @@ def main(argv):
     # load builtin tasks
     config.tasks.update(builtin_taskframes)
 
-    taskframe = build_taskgroup_from_argv(argv, config)
+    env = {"__builtins__": __builtins__}
+
+    taskframe = build_taskgroup_from_argv(argv, env, config)
     taskcontroller = TaskController(taskframe, config)
     retval = taskcontroller.run()
 

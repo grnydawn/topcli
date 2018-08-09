@@ -9,5 +9,5 @@ class TaskController(object):
         self.config = config
 
     def run(self):
-        env = {}
-        self.frame.run(self, env)
+
+        self.frame.run(self)
