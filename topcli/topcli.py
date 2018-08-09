@@ -4,23 +4,38 @@
 
 import sys
 
+from .frame import build_taskgroup_from_argv
+from .controller import TaskController
+from .config import Config
+from .builtin import builtin_taskframes
+
 def entry():
-    main(sys.argv[1:])
+    return main(sys.argv[1:])
 
 def main(argv):
 
-    def show_usage():
+    def _show_usage():
         print("Usage: perform task [input [input ...]] [option [option ...]] [ -- task ...]")
 
     # handle entry options
     if not argv or argv[0] in ("-h", "--help"):
-        show_usage()
+        _show_usage()
         sys.exit(0)
     elif argv[0] == "--version":
         print("perform version 0.1.0")
         sys.exit(0)
 
-    # perform task(s)
-    from .perform import perform_task
-    return perform_task(argv)
+    config = Config()
+
+    # load builtin tasks
+    config.tasks.update(builtin_taskframes)
+
+    # load builtin tasks
+    taskframe = build_taskgroup_from_argv(argv, config)
+    taskcontroller = TaskController(taskframe, config)
+    retval = taskcontroller.run()
+
+    config.dump()
+
+    return retval
 

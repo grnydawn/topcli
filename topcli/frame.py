@@ -2,8 +2,27 @@
 
 """Frame module."""
 
+import os
+import sys
 import abc
 import argparse
+
+from .util import PY3, name_match
+
+if PY3:
+
+    import importlib
+    __import__ = importlib.__import__
+
+    from urllib.request import urlopen
+    from urllib.parse import urlparse
+    from urllib.error import HTTPError, URLError
+
+else:
+
+    from urllib2 import urlopen, HTTPError, URLError
+    from urlparse import urlparse
+
 
 class TaskFrame(object):
 
@@ -20,8 +39,6 @@ class TaskFrame(object):
 #        parser.add_argument('--calc', metavar='calc', action='append', help='python code for manipulating data.')
 #        parser.add_argument('--output', metavar='output', action='append', help='output variable.')
 
-        parser.add_argument('data', nargs='*', help='input data.')
-
         obj = super(TaskFrame, cls).__new__(cls)
         obj.parser = parser
         obj.targs = None
@@ -31,6 +48,66 @@ class TaskFrame(object):
     @abc.abstractmethod
     def __init__(self, argv):
         pass
+
+    @classmethod
+    def load_from_path(cls, path, fragment):
+        mod = None
+        if os.path.isfile(path):
+            head, base = os.path.split(path)
+            if base.endswith(".py"):
+                sys.path.insert(0, head)
+                mod = __import__(base[:-3])
+                sys.path.pop(0)
+        elif os.path.isdir(path):
+            head, base = os.path.split(path)
+            sys.path.insert(0, head)
+            mod = __import__(base)
+            sys.path.pop(0)
+
+        candidates = {}
+        if mod:
+            for name in dir(mod):
+                if not name.startswith("_"):
+                    obj = getattr(mod, name)
+                    if type(obj) == type(TaskFrame):
+                        candidates[name] = obj
+
+        if candidates:
+            if fragment:
+                return candidates.get(fragment, None)
+            elif len(candidates) == 1:
+                return candidates[0]
+            else:
+                import pdb; pdb.set_trace()
+
+    @classmethod
+    def load(cls, url, config):
+        o = urlparse(url)
+        if o.netloc:
+            import pdb; pdb.set_trace()
+        elif o.path:
+            if os.path.exists(o.path):
+                frame = cls.load_from_path(o.path, o.fragment)
+                if frame: return frame
+
+            if o.path in config.tasks:
+                frame = config.tasks[o.path]
+                if frame: return frame
+
+            if o.path in config.taskconfig["names"]:
+                if os.path.exists(config.taskconfig["names"][o.path]):
+                    frame = cls.load_from_path(config.taskconfig["names"][o.path], o.fragment)
+                    if frame: return frame
+                else:
+                    import pdb; pdb.set_trace()
+
+            match = name_match(o.path, config.tasks.keys())
+            if match:
+                import pdb; pdb.set_trace()
+
+            match = name_match(o.path, config.taskconfig["names"].keys())
+            if match:
+                import pdb; pdb.set_trace()
 
     def run(self, env):
 
@@ -75,7 +152,14 @@ class SeqTaskFrameGroup(TaskFrameGroup):
     def perform(self, env):
         import pdb; pdb.set_trace()
 
-def build_taskgroup_from_argv(argv):
+def load_taskframe(taskname, config):
+
+    if taskname in config.tasks:
+        return config.tasks[taskname]
+    else:
+        import pdb; pdb.set_trace()
+
+def build_taskgroup_from_argv(argv, config):
 
     # SeqTaskFrameGroup does not have its own argument
     taskgroup = SeqTaskFrameGroup([])
@@ -86,7 +170,7 @@ def build_taskgroup_from_argv(argv):
     for arg in argv:
         if arg == "--":
             if targv:
-                taskframe = load_taskframe(targv[0])
+                taskframe = load_taskframe(targv[0], config)
                 taskinstance = taskframe(targv[1:])
                 taskgroup.add(taskinstance, prev_instance)
                 prev_instance = taskinstance
@@ -95,8 +179,11 @@ def build_taskgroup_from_argv(argv):
             targv.append(arg)
 
     if targv:
-        taskframe = load_taskframe(targv[0])
-        taskinstance = taskframe(targv[1:])
-        taskgroup.add(taskinstance, prev_instance)
+        taskframe = TaskFrame.load(targv[0], config)
+        if taskframe:
+            taskinstance = taskframe(targv[1:])
+            taskgroup.add(taskinstance, prev_instance)
+        else:
+            import pdb; pdb.set_trace()
 
     return taskgroup
