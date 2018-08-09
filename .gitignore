@@ -102,3 +102,5 @@ ENV/
 
 # VI editor
 *.swp
+
+.pytest_cache

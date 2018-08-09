@@ -2,11 +2,12 @@
 
 """matplotlib task module."""
 
+import os
 import topcli
 
 class MPLTask(topcli.TaskFrameUnit):
 
-    def __init__(self, argv, env):
+    def __init__(self, ctr, parent, argv, env):
 
         self.parser.add_argument('-f', metavar='figure creation', help='define a figure for plotting.')
         self.parser.add_argument('-t', '--title', metavar='title', action='append', help='title  plotting.')
@@ -345,8 +346,16 @@ class MPLTask(topcli.TaskFrameUnit):
                     name = vargs.pop(0)
 
                     if self.env['num_pages'] > 1:
-                        root, ext = os.path.splitext(name)
-                        name = '%s-%d%s'%(root, self.env['page_num'], ext)
+                        if os.path.exists(name):
+                            if not os.path.isdir(name):
+                                os.remove(name)
+                                os.makedirs(name)
+                        else:
+                            os.makedirs(name)
+                            
+                        name = os.path.join(name, str(self.env['page_num'])+".pdf")
+                        #root, ext = os.path.splitext(name)
+                        #name = os.path.join(root, '%s-%d%s'%(self.env['page_num'], ext))
 
                     self.env["figure"].savefig(name, *vargs, **kwargs)
 
@@ -360,3 +369,5 @@ class MPLTask(topcli.TaskFrameUnit):
             self.env["figure"].clear()
             self.env["pyplot"].close(self.env["figure"])
             del self.env['figure']
+
+        return 0

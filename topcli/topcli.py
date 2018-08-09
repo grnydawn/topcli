@@ -4,7 +4,7 @@
 
 import sys
 
-from .frame import build_taskgroup_from_argv
+from .frame import SeqTaskFrameGroup, TaskFrame
 from .controller import TaskController
 from .config import Config
 from .builtin import builtin_taskframes
@@ -30,13 +30,31 @@ def main(argv):
     # load builtin tasks
     config.tasks.update(builtin_taskframes)
 
+    gargv = []
+    targv = []
+
+    for arg in argv:
+        if arg == "--":
+            if targv:
+                gargv.append(targv)
+            targv = []
+        else:
+            targv.append(arg)
+
+    if targv:
+        gargv.append(targv)
+
+    ctr = TaskController(config)
     env = {"__builtins__": __builtins__}
 
-    taskframe = build_taskgroup_from_argv(argv, env, config)
-    taskcontroller = TaskController(taskframe, config)
-    retval = taskcontroller.run()
+    if len(gargv) > 1:
+        instance = SeqTaskFrameGroup(ctr, ctr, gargv, env)
+    elif targv:
+        task_frame = TaskFrame.load(targv[0], config)
+        instance = task_frame(ctr, ctr, targv[1:], env)
+
+    retval = ctr.run(instance)
 
     config.dump()
 
     return retval
-

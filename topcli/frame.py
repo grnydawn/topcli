@@ -23,12 +23,11 @@ else:
     from urllib2 import urlopen, HTTPError, URLError
     from urlparse import urlparse
 
-
-class TaskFrame(object):
+class TaskFrame(object, ):
 
     __metaclass__ = abc.ABCMeta
 
-    def __new__(cls, argv, env):
+    def __new__(cls, ctr, parent, args, env):
 
         parser = argparse.ArgumentParser()
 
@@ -37,19 +36,22 @@ class TaskFrame(object):
 #        parser.add_argument('--import-task', metavar='task', action='append', help='import task')
 #        parser.add_argument('--import-function', metavar='function', action='append', help='import function')
 #        parser.add_argument('--import-module', metavar='module', action='append', help='import module')
-#        parser.add_argument('--name', metavar='task name', help='task name')
+        parser.add_argument('--promote', metavar='variable', action='append', help='promote local varialble to global level.')
         parser.add_argument('--calc', metavar='calc', action='append', help='python code for manipulating data.')
 #        parser.add_argument('--output', metavar='output', action='append', help='output variable.')
 
         obj = super(TaskFrame, cls).__new__(cls)
         obj.parser = parser
-        obj.env = env
         obj.targs = None
+        obj.env = env
+        obj.ctr = ctr
+        obj.parent = parent
+        obj.subframes = []
 
         return obj
 
     @abc.abstractmethod
-    def __init__(self, argv, env):
+    def __init__(self, ctr, parent, args, env):
         pass
 
     @classmethod
@@ -112,9 +114,14 @@ class TaskFrame(object):
             if match:
                 import pdb; pdb.set_trace()
 
-    def run(self, ctr):
+    def register(self, frame):
 
-        self.ctr = ctr
+        self.subframes.append(frame)
+
+    def run(self):
+
+        if self not in self.parent.subframes:
+            self.parent.subframes.append(self)
 
         # parse common options
 
@@ -134,7 +141,14 @@ class TaskFrame(object):
         # ...
 
         # run perform
-        self.perform()
+        out = self.perform()
+
+        if self.targs.promote:
+            for promote_arg in self.targs.promote:
+                vargs, kwargs = self.teval_args(promote_arg)
+                self.env.update(kwargs)
+
+        return out
 
     @abc.abstractmethod
     def perform(self):
@@ -176,88 +190,52 @@ class TaskFrameUnit(TaskFrame):
 
 class TaskFrameGroup(TaskFrame):
 
-    def __new__(cls, argv, env):
+    def __new__(cls, ctr, parent, args, env):
 
-        obj = super(TaskFrameGroup, cls).__new__(cls, argv, env)
+        obj = super(TaskFrameGroup, cls).__new__(cls, ctr, parent, args, env)
         obj.depends = {}
+        obj.entryframe = None
 
         return obj
 
     def __len__(self):
         return len(self.depends)
 
-    def add(self, instance, prev_instance):
+    def add(self, instance, next_instance):
 
         if instance not in self.depends:
-            self.depends[instance] = []
+            self.depends[instance] = next_instance
+        else:
+            self.error_exit("taskframe is already used.")
 
-        if prev_instance not in self.depends[instance]:
-            self.depends[instance].append(prev_instance)
-
-    def first_task(self):
-        ftask = None
-        for task, prev_task in self.depends.items():
-            if ftask is None:
-                ftask = task
-            elif ftask == task:
-                if prev_task is None:
-                    return ftask
-                else:
-                    ftask = prev_task
-        return ftask
-
-    def last_task(self):
-        ltask = None
-        for task, prev_task in self.depends.items():
-            if ltask is None:
-                ltask = task
-            elif ltask == prev_task:
-                ltask = task
-        return ltask
+    def set_entryframe(self, frame):
+        self.entryframe = frame
 
 class SeqTaskFrameGroup(TaskFrameGroup):
 
-    def __init__(self, argv, env):
-        self.targs = self.parser.parse_args(argv)
+    def __init__(self, ctr, parent, targvs, env):
+
+        self.targs = self.parser.parse_args([])
+
+        next_instance = None
+
+        for targv in reversed(targvs):
+            task_frame = TaskFrame.load(targv[0], ctr.config)
+            if task_frame is not None:
+                task_instance = task_frame(ctr, self, targv[1:], dict(env))
+                if task_instance is not None:
+                    self.add(task_instance, next_instance)
+                    self.set_entryframe(task_instance)
+                    next_instance = task_instance
 
     def perform(self):
-        import pdb; pdb.set_trace()
 
-def load_taskframe(taskname, config):
+        frame = self.entryframe
 
-    if taskname in config.tasks:
-        return config.tasks[taskname]
-    else:
-        import pdb; pdb.set_trace()
+        out = -1
+        while(frame):
+            # TODO: how to merge envs
+            out = frame.run()
+            frame = self.depends[frame]
 
-def build_taskgroup_from_argv(argv, env, config):
-
-    # SeqTaskFrameGroup does not have its own argument
-    taskgroup = SeqTaskFrameGroup([], dict(env))
-
-    targv = []
-    prev_instance = None
-
-    for arg in argv:
-        if arg == "--":
-            if targv:
-                task_frame = TaskFrame.load(targv[0], config)
-                task_instance = task_frame(targv[1:], dict(env))
-                taskgroup.add(task_instance, prev_instance)
-                prev_instance = task_instance
-            targv = []
-        else:
-            targv.append(arg)
-
-    if targv:
-        task_frame = TaskFrame.load(targv[0], config)
-        task_instance = task_frame(targv[1:], dict(env))
-        if task_instance:
-            taskgroup.add(task_instance, prev_instance)
-        else:
-            import pdb; pdb.set_trace()
-
-    if len(taskgroup) == 1:
-        return taskgroup.first_task()
-    else:
-        return taskgroup
+        return out

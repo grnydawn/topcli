@@ -4,10 +4,14 @@
  
 class TaskController(object):
 
-    def __init__(self, taskframe, config):
-        self.frame = taskframe
+    def __init__(self, config):
         self.config = config
+        self.subframes = []
 
-    def run(self):
+    def register(self, frame):
 
-        self.frame.run(self)
+        self.subframes.append(frame)
+
+    def run(self, instance):
+
+        return instance.run()
