@@ -30,7 +30,6 @@ def main(argv):
     # load builtin tasks
     config.tasks.update(builtin_taskframes)
 
-    # load builtin tasks
     taskframe = build_taskgroup_from_argv(argv, config)
     taskcontroller = TaskController(taskframe, config)
     retval = taskcontroller.run()

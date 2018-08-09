@@ -109,7 +109,7 @@ class TaskFrame(object):
             if match:
                 import pdb; pdb.set_trace()
 
-    def run(self, env):
+    def run(self, ctr, env):
 
         # add more options
 

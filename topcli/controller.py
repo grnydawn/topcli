@@ -9,5 +9,5 @@ class TaskController(object):
         self.config = config
 
     def run(self):
-        import pdb; pdb.set_trace()
-        pass
+        env = {}
+        self.frame.run(self, env)
