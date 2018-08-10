@@ -75,11 +75,6 @@ class TaskFrame(object, ):
         taskopts = {}
         tasktmps = {}
 
-        option = meta.options("OPTION")
-        repace = meta.options("REPLACE")
-        append = meta.options("APPEND")
-        delete = meta.options("DELETE")
-
         for option in meta.options("OPTION"):
             groupopts[eval(option)] = eval(meta.get("OPTION", option))
 

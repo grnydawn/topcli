@@ -52,18 +52,18 @@ class GroupTaskFrame(TaskFrameUnit):
             for option_arg in self.targs.option:
                 items, vargs, kwargs = self.teval_atargs(option_arg)
                 if len(items) == 1:
-                    meta.set('OPTION', items[0], (vargs, kwargs))
+                    meta.set('OPTION', str(tuple(items[0])), (vargs, kwargs))
                 else:
                     self.error_exit("Wrong syntax near '%s'."%option_arg)
 
         meta.add_section('REPLACE')
         if self.targs.replace:
-            for replace_org in self.targs.replace:
+            for replace_arg in self.targs.replace:
                 items, vargs, kwargs = self.teval_atargs(replace_arg)
                 if len(items) == 1:
-                    meta.set('REPLACE', ["'*'", items[0]], (vargs, kwargs))
+                    meta.set('REPLACE', str(tuple(["'*'", items[0]])), (vargs, kwargs))
                 elif len(items) == 2:
-                    meta.set('REPLACE', items, (vargs, kwargs))
+                    meta.set('REPLACE', str(tuple(items)), (vargs, kwargs))
                 else:
                     self.error_exit("Wrong syntax near '%s'."%replace_arg)
 
@@ -72,9 +72,9 @@ class GroupTaskFrame(TaskFrameUnit):
             for append_arg in self.targs.append:
                 items, vargs, kwargs = self.teval_atargs(append_arg)
                 if len(items) == 0:
-                    meta.set('APPEND', "'*'", (vargs, kwargs))
+                    meta.set('APPEND', str(tuple("'*'")), (vargs, kwargs))
                 elif len(items) == 1:
-                    meta.set('APPEND', items[0], (vargs, kwargs))
+                    meta.set('APPEND', str(tuple(items[0])), (vargs, kwargs))
                 else:
                     self.error_exit("Wrong syntax near '%s'."%append_arg)
 
@@ -83,9 +83,9 @@ class GroupTaskFrame(TaskFrameUnit):
             for delete_arg in self.targs.delete:
                 items, vargs, kwargs = self.teval_atargs(delete_arg)
                 if len(items) == 0:
-                    meta.set('DELETE', "'*'", (vargs, kwargs))
+                    meta.set('DELETE', str(tuple("'*'")), (vargs, kwargs))
                 elif len(items) == 1:
-                    meta.set('DELETE', items[0], (vargs, kwargs))
+                    meta.set('DELETE', str(tuple(items[0])), (vargs, kwargs))
                 else:
                     self.error_exit("Wrong syntax near '%s'."%delete_arg)
 
