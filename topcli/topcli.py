@@ -20,6 +20,7 @@ def entry():
 def main(argv):
 
     def _show_usage():
+        # TODO: may use textwrap dedent
         print("Usage: perform task [arguments ...] [ -- task [arguments ...]] ...")
 
     # handle entry options
@@ -55,12 +56,14 @@ def main(argv):
     env["__builtins__"] =  __builtins__
 
     if len(gargv) > 1:
-        instance = ShellTaskFrameGroup(ctr, ctr, gargv, env)
+        instance = ShellTaskFrameGroup(ctr, ctr, "", gargv, env)
     elif targv:
-        task_frame = TaskFrame.load(targv[0], config)
-        instance = task_frame(ctr, ctr, targv[1:], env)
+        instance = TaskFrame.load(targv[0], targv[1:], ctr, ctr, env)
 
-    retval = ctr.run(instance)
+    if instance:
+        retval = ctr.run(instance)
+    else:
+        reetval = -1
 
     config.dump()
 

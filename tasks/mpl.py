@@ -7,7 +7,7 @@ import topcli
 
 class MPLTask(topcli.TaskFrameUnit):
 
-    def __init__(self, ctr, parent, argv, env):
+    def __init__(self, ctr, parent, url, argv, env):
 
         self.parser.add_argument('-f', metavar='figure creation', help='define a figure for plotting.')
         self.parser.add_argument('-t', '--title', metavar='title', action='append', help='title  plotting.')

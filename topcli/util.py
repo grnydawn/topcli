@@ -3,6 +3,8 @@
 """utility module."""
 
 import sys
+import zipfile
+import tempfile
 
 PY3 = sys.version_info >= (3, 0)
 
@@ -59,3 +61,41 @@ class envdict(dict):
             yield k, self.__getitem__(k)
 
     iteritems = items
+
+def is_taffile(path):
+
+    # is zipfile
+    if not zipfile.is_zipfile(path):
+        return False
+
+    taf = zipfile.ZipFile(path)
+
+    try:
+        tmeta = taf.getinfo("METAFILE")
+        with taf.open("METAFILE") as mf:
+            firstline = mf.readline().strip()
+            return firstline == "[MAGIC_TOPCLI]"
+    except KeyError:
+        return False
+
+def extract_taffile(path):
+
+    tmpdir = tempfile.mkdtemp()
+    taf = zipfile.ZipFile(path)
+    taf.extractall(path=tmpdir)
+
+    return tmpdir
+
+def dest_name(arg):
+    if arg.startswith("--"):
+        name = arg[2:]
+    elif arg.startswith("-"):
+        name = arg[1:]
+    else:
+        name = arg
+    return name.replace("-", "_")
+    
+def get_nargs(parser, dest):
+    for act in parser._actions:
+        if act.dest == dest:
+            return act.nargs

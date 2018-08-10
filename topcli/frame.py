@@ -7,7 +7,8 @@ import sys
 import abc
 import argparse
 
-from .util import PY3, name_match, envdict
+from .util import (PY3, name_match, envdict, is_taffile, extract_taffile,
+    dest_name, get_nargs)
 
 if PY3:
 
@@ -18,16 +19,21 @@ if PY3:
     from urllib.parse import urlparse
     from urllib.error import HTTPError, URLError
 
+    import configparser
 else:
 
     from urllib2 import urlopen, HTTPError, URLError
     from urlparse import urlparse
 
+    import ConfigParser as configparser
+
 class TaskFrame(object, ):
 
     __metaclass__ = abc.ABCMeta
 
-    def __new__(cls, ctr, parent, args, env):
+    def __new__(cls, ctr, parent, url, argv, env):
+
+        # TODO: wrap ArgumentParser to get inner info
 
         parser = argparse.ArgumentParser()
 
@@ -42,6 +48,8 @@ class TaskFrame(object, ):
 
         obj = super(TaskFrame, cls).__new__(cls)
         obj.parser = parser
+        obj.turl = url
+        obj.targv = list(argv)
         obj.targs = None
         obj.env = env
         obj.ctr = ctr
@@ -51,11 +59,103 @@ class TaskFrame(object, ):
         return obj
 
     @abc.abstractmethod
-    def __init__(self, ctr, parent, args, env):
+    def __init__(self, ctr, parent, turl, argv, env):
         pass
 
     @classmethod
-    def load_from_path(cls, path, fragment):
+    def load_from_taf(cls, path, fragment, ctr, parent, argv, newenv):
+
+        tmpdir = extract_taffile(path)
+
+        meta = configparser.ConfigParser()
+        with open(os.path.join(tmpdir, "METAFILE")) as mf:
+            meta.readfp(mf)
+
+        groupopts = {}
+        taskopts = {}
+        tasktmps = {}
+
+        option = meta.options("OPTION")
+        repace = meta.options("REPLACE")
+        append = meta.options("APPEND")
+        delete = meta.options("DELETE")
+
+        for option in meta.options("OPTION"):
+            groupopts[eval(option)] = eval(meta.get("OPTION", option))
+
+        for task in meta.options("TASK"):
+            tasknum = eval(task)
+            taskinfo = eval(meta.get("TASK", task))
+            taskopts[tasknum] = taskinfo[1:]
+            tasktmp = cls.load(taskinfo[0], taskinfo[1:], ctr, parent, newenv)
+            tasktmps[tasknum] = tasktmp
+
+        for replace in meta.options("REPLACE"):
+            rid = eval(replace)
+            for tid, tops in taskopts.items():
+                import pdb; pdb.set_trace()
+
+        dargs = [] # with location
+        for delete in meta.options("DELETE"):
+            did = eval(delete)
+            for tid, tops in taskopts.items():
+                if did == tid or did == "*":
+                    parser = tasktmps[tid].parser
+                    dinfo = eval(meta.get("DELETE", delete))
+                    for item in dinfo[0]:
+                        split = item.split("#")
+                        if len(split)==1:
+                            dname = split[0]
+                            loc = None
+                        elif len(split)==2:
+                            dname = split[0]
+                            loc = int(split[1])
+                        dest = dest_name(dname)
+                        nargs = get_nargs(parser, dest)
+                        if nargs is None:
+                            import pdb; pdb.set_trace()
+                        elif isinstance(nargs, int):
+                            idx = 0
+                            lcnt = 0 
+                            ncnt = 0 
+                            while(idx<len(tops)):
+
+                                if ncnt > 0:
+                                    tops.pop(idx)
+                                    ncnt -= 1
+                                    continue
+
+                                if dest_name(tops[idx]) == dest:
+                                    lcnt += 1
+                                    if loc is None or loc == lcnt:
+                                        tops.pop(idx)
+                                        ncnt = nargs
+                                    else:
+                                        idx += 1
+                                else:
+                                    idx += 1
+
+                        elif nargs == "*":
+                            import pdb; pdb.set_trace()
+                        elif nargs == "+":
+                            import pdb; pdb.set_trace()
+                        elif nargs == "?":
+                            import pdb; pdb.set_trace()
+        
+        
+        for append in meta.options("APPEND"):
+            aid = eval(append)
+            for tid, tops in taskopts.items():
+                import pdb; pdb.set_trace()
+
+        targvs = []
+        for tid, tasktmp in tasktmps.items():
+            targvs.append([tasktmp.turl] + taskopts[tid])
+
+        return ShellTaskFrameGroup(ctr, parent, path, targvs, newenv)
+
+    @classmethod
+    def load_from_path(cls, path, fragment, ctr, parent, argv, newenv):
         mod = None
         if os.path.isfile(path):
             head, base = os.path.split(path)
@@ -79,38 +179,58 @@ class TaskFrame(object, ):
 
         if candidates:
             if fragment:
-                return candidates.get(fragment, None)
+                frame = candidates.get(fragment, None)
             elif len(candidates) == 1:
-                return candidates.values()[0]
+                frame = candidates.values()[0]
             else:
                 import pdb; pdb.set_trace()
 
+            return frame(ctr, parent, path, argv, newenv)
+
     @classmethod
-    def load(cls, url, config):
+    def load(cls, url, argv, ctr, parent, env):
         o = urlparse(url)
+
+        newenv = envdict()
+        newenv.parent = env
+
         if o.netloc:
             import pdb; pdb.set_trace()
         elif o.path:
+            # local path
             if os.path.exists(o.path):
-                frame = cls.load_from_path(o.path, o.fragment)
-                if frame: return frame
+                npath = os.path.abspath(os.path.realpath(o.path))
+                if is_taffile(npath):
+                    return cls.load_from_taf(npath, o.fragment,
+                        ctr, parent, argv, newenv)
+                else:
+                    return cls.load_from_path(npath, o.fragment,
+                        ctr, parent, argv, newenv)
 
-            if o.path in config.tasks:
-                frame = config.tasks[o.path]
-                if frame: return frame
+            # loaded task
+            if o.path in ctr.config.tasks:
+                frame = ctr.config.tasks[o.path]
+                return frame(ctr, parent, o.path, argv, newenv)
 
-            if o.path in config.taskconfig["names"]:
-                if os.path.exists(config.taskconfig["names"][o.path]):
-                    frame = cls.load_from_path(config.taskconfig["names"][o.path], o.fragment)
-                    if frame: return frame
+            # installed task
+            if o.path in ctr.config.taskconfig["names"]:
+                if os.path.exists(ctr.config.taskconfig["names"][o.path]):
+                    npath = ctr.config.taskconfig["names"][o.path]
+                    npath = os.path.abspath(npath)
+                    if is_taffile(npath):
+                        return cls.load_from_taf(npath, o.fragment, ctr, parent, argv, newenv)
+                    else:
+                        return cls.load_from_path(npath, o.fragment, ctr, parent, argv, newenv)
                 else:
                     import pdb; pdb.set_trace()
 
-            match = name_match(o.path, config.tasks.keys())
+            # shorten name match with loaded tasks
+            match = name_match(o.path, ctr.config.tasks.keys())
             if match:
                 import pdb; pdb.set_trace()
 
-            match = name_match(o.path, config.taskconfig["names"].keys())
+            # shorten name match with installed tasks
+            match = name_match(o.path, ctr.config.taskconfig["names"].keys())
             if match:
                 import pdb; pdb.set_trace()
 
@@ -170,12 +290,12 @@ class TaskFrame(object, ):
         except TypeError as err:
             import pdb; pdb.set_trace()
 
-    def teval_args(self, args, **kwargs):
+    def teval_args(self, argv, **kwargs):
 
-        def _p(*args, **kw_str):
-            return list(args), kw_str
+        def _p(*argv, **kw_str):
+            return list(argv), kw_str
 
-        return self.teval('_p(%s)'%args, _p=_p, **kwargs)
+        return self.teval('_p(%s)'%argv, _p=_p, **kwargs)
 
     def teval_atargs(self, expr, **kwargs):
         s = [i.strip() for i in expr.split("@")]
@@ -245,9 +365,9 @@ class TaskFrameUnit(TaskFrame):
 
 class TaskFrameGroup(TaskFrame):
 
-    def __new__(cls, ctr, parent, args, env):
+    def __new__(cls, ctr, parent, turl, argv, env):
 
-        obj = super(TaskFrameGroup, cls).__new__(cls, ctr, parent, args, env)
+        obj = super(TaskFrameGroup, cls).__new__(cls, ctr, parent, turl, argv, env)
         obj.depends = {}
         obj.entryframe = None
 
@@ -281,35 +401,29 @@ class TaskFrameGroup(TaskFrame):
 
         return out
 
+
 class ShellTaskFrameGroup(TaskFrameGroup):
 
-    def __init__(self, ctr, parent, targvs, env):
+    def __init__(self, ctr, parent, url, targvs, env):
 
         self.targs = self.parser.parse_args([])
 
         next_instance = None
 
         for targv in reversed(targvs):
-            task_frame = TaskFrame.load(targv[0], ctr.config)
-            if task_frame is not None:
-                newenv = envdict()
-                newenv.parent = env
-                task_instance = task_frame(ctr, self, targv[1:], newenv)
-                if task_instance is not None:
-                    self.add(task_instance, next_instance)
-                    self.set_entryframe(task_instance)
-                    next_instance = task_instance
+            task_instance = TaskFrame.load(targv[0], targv[1:], ctr, self, env)
+            if task_instance:
+                self.add(task_instance, next_instance)
+                self.set_entryframe(task_instance)
+                next_instance = task_instance
 
-    def run(self):
-
-        frame = self.entryframe
-
-        out = -1
-        while(frame):
-            # TODO: how to merge envs
-            out = frame.run()
-            frame = self.depends[frame]
-
-        return out
-
+#            task_frame, remained = TaskFrame.load(targv[0], ctr.config)
+#            if task_frame is not None:
+#                newenv = envdict()
+#                newenv.parent = env
+#                if task_frame is TafTaskFrameGroup:
+#                    task_instance = task_frame(ctr, self, remained[0], remained[1], newenv)
+#                else:
+#                    task_instance = task_frame(ctr, self, remained, targv[1:], newenv)
+#                if task_instance is not None:
 

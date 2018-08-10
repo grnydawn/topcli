@@ -6,7 +6,7 @@ import topcli
 
 class PrintTask(topcli.TaskFrameUnit):
 
-    def __init__(self, ctr, parent, argv, env):
+    def __init__(self, ctr, parent, url, argv, env):
 
         self.parser.add_argument('--str', metavar='variable', nargs=1, help='generate string.')
         self.parser.add_argument('--version', action='version', version='print task version 0.1.0')

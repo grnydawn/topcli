@@ -104,3 +104,4 @@ ENV/
 *.swp
 
 .pytest_cache
+*.taf
