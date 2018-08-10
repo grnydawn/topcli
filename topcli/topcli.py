@@ -21,7 +21,7 @@ def main(argv):
 
     def _show_usage():
         # TODO: may use textwrap dedent
-        print("Usage: perform task [arguments ...] [ -- task [arguments ...]] ...")
+        print("Usage: perform task [arguments] [-- task [arguments]] ...")
 
     # handle entry options
     if not argv or argv[0] in ("-h", "--help"):

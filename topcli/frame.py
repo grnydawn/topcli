@@ -112,36 +112,45 @@ class TaskFrame(object, ):
                             loc = int(split[1])
                         dest = dest_name(dname)
                         nargs = get_nargs(parser, dest)
-                        if nargs is None:
-                            import pdb; pdb.set_trace()
-                        elif isinstance(nargs, int):
-                            idx = 0
-                            lcnt = 0 
-                            ncnt = 0 
-                            while(idx<len(tops)):
+                        idx = 0
+                        lcnt = 0 
+                        ncnt = 0 
+                        while(idx<len(tops)):
 
-                                if ncnt > 0:
+                            if ncnt is None:
+                                pass
+                            elif isinstance(ncnt, int) and ncnt > 0:
+                                tops.pop(idx)
+                                ncnt -= 1
+                                continue
+                            elif ncnt == "*":
+                                if tops[idx].startswith("-"):
+                                    ncnt = None
+                                else:
                                     tops.pop(idx)
-                                    ncnt -= 1
+                                    continue
+                            elif ncnt == "+":
+                                tops.pop(idx)
+                                ncnt = "*"
+                                continue
+                            elif ncnt == "?":
+                                if tops[idx].startswith("-"):
+                                    ncnt = None
+                                else:
+                                    tops.pop(idx)
+                                    ncnt = None
                                     continue
 
-                                if dest_name(tops[idx]) == dest:
-                                    lcnt += 1
-                                    if loc is None or loc == lcnt:
-                                        tops.pop(idx)
-                                        ncnt = nargs
-                                    else:
-                                        idx += 1
+
+                            if dest_name(tops[idx]) == dest:
+                                lcnt += 1
+                                if loc is None or loc == lcnt:
+                                    tops.pop(idx)
+                                    ncnt = nargs
                                 else:
                                     idx += 1
-
-                        elif nargs == "*":
-                            import pdb; pdb.set_trace()
-                        elif nargs == "+":
-                            import pdb; pdb.set_trace()
-                        elif nargs == "?":
-                            import pdb; pdb.set_trace()
-        
+                            else:
+                                idx += 1
         
         for append in meta.options("APPEND"):
             aid = eval(append)
