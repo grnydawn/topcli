@@ -4,7 +4,7 @@
 
 import sys
 
-from .frame import SeqTaskFrameGroup, TaskFrame
+from .frame import ShellTaskFrameGroup, TaskFrame
 from .controller import TaskController
 from .config import Config
 from .builtin import builtin_taskframes
@@ -55,7 +55,7 @@ def main(argv):
     env["__builtins__"] =  __builtins__
 
     if len(gargv) > 1:
-        instance = SeqTaskFrameGroup(ctr, ctr, gargv, env)
+        instance = ShellTaskFrameGroup(ctr, ctr, gargv, env)
     elif targv:
         task_frame = TaskFrame.load(targv[0], config)
         instance = task_frame(ctr, ctr, targv[1:], env)

@@ -127,9 +127,10 @@ class TaskFrame(object, ):
 
         # data
         data = []
-        for d in self.targs.data:
-            obj = self.teval(d)
-            data.append(obj)
+        if self.targs.data:
+            for d in self.targs.data:
+                obj = self.teval(d)
+                data.append(obj)
         self.env["D"] = data
 
         if self.targs.calc:
@@ -186,6 +187,59 @@ class TaskFrame(object, ):
         return self.teval('_f_(*_v_, **_k_)', _f_=func,
             _v_=vargs, _k_=kwargs)
 
+    def parse_args(self, expr):
+
+        def _unstrmap(text, strmap):
+
+            for k, v in strmap.items():
+                text = text.replace(k, v)
+
+            return text
+
+        def _strmap(text):
+            strmap = {}
+
+            quote = None
+            out = []
+            buf = []
+            for ch in text:
+                if ch=='"' or ch=="'":
+                    if quote:
+                        if quote==ch:
+                            strid = "topclistrmap%d"%len(strmap)
+                            out.append(strid)
+                            strmap[strid] = "".join(buf)
+                            out.append(quote)
+
+                            buf = []
+                            quote = None
+                        else:
+                            buf.append(ch)
+                    else:
+                        quote = ch
+                        out.append(quote)
+                elif quote:
+                    buf.append(ch)
+                else:
+                    out.append(ch)
+
+            return "".join(out), strmap
+
+
+        lv = []
+        lk = {}
+
+        newtext, strmap = _strmap(expr)
+
+        for item in [i.strip() for i in newtext.split(',')]:
+            if '=' in item:
+                new, old = [i.strip() for i in item.split('=')]
+                lk[new] = _unstrmap(old, strmap)
+            else:
+                lv.append(_unstrmap(item, strmap))
+
+        return lv, lk
+
 class TaskFrameUnit(TaskFrame):
     pass
 
@@ -227,7 +281,7 @@ class TaskFrameGroup(TaskFrame):
 
         return out
 
-class SeqTaskFrameGroup(TaskFrameGroup):
+class ShellTaskFrameGroup(TaskFrameGroup):
 
     def __init__(self, ctr, parent, targvs, env):
 
@@ -245,4 +299,17 @@ class SeqTaskFrameGroup(TaskFrameGroup):
                     self.add(task_instance, next_instance)
                     self.set_entryframe(task_instance)
                     next_instance = task_instance
+
+    def run(self):
+
+        frame = self.entryframe
+
+        out = -1
+        while(frame):
+            # TODO: how to merge envs
+            out = frame.run()
+            frame = self.depends[frame]
+
+        return out
+
 
