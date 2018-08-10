@@ -8,6 +8,11 @@ from .frame import SeqTaskFrameGroup, TaskFrame
 from .controller import TaskController
 from .config import Config
 from .builtin import builtin_taskframes
+from .util import envdict
+
+import warnings
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 def entry():
     return main(sys.argv[1:])
@@ -45,7 +50,9 @@ def main(argv):
         gargv.append(targv)
 
     ctr = TaskController(config)
-    env = {"__builtins__": __builtins__}
+
+    env = envdict()
+    env["__builtins__"] =  __builtins__
 
     if len(gargv) > 1:
         instance = SeqTaskFrameGroup(ctr, ctr, gargv, env)

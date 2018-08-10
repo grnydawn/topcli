@@ -7,7 +7,7 @@ import sys
 import abc
 import argparse
 
-from .util import PY3, name_match
+from .util import PY3, name_match, envdict
 
 if PY3:
 
@@ -146,7 +146,7 @@ class TaskFrame(object, ):
         if self.targs.promote:
             for promote_arg in self.targs.promote:
                 vargs, kwargs = self.teval_args(promote_arg)
-                self.env.update(kwargs)
+                self.parent.env.update(kwargs)
 
         return out
 
@@ -162,7 +162,8 @@ class TaskFrame(object, ):
 
     def teval(self, expr, **kwargs):
         try:
-            return eval(expr, self.env, kwargs)
+            env = dict((k,v) for k,v in self.env.items())
+            return eval(expr, env, kwargs)
         except NameError as err:
             self.error_exit('EVAL: '+str(err))
         except TypeError as err:
@@ -211,6 +212,21 @@ class TaskFrameGroup(TaskFrame):
     def set_entryframe(self, frame):
         self.entryframe = frame
 
+    def perform(self):
+        pass
+
+    def run(self):
+
+        frame = self.entryframe
+
+        out = -1
+        while(frame):
+            # TODO: how to merge envs
+            out = frame.run()
+            frame = self.depends[frame]
+
+        return out
+
 class SeqTaskFrameGroup(TaskFrameGroup):
 
     def __init__(self, ctr, parent, targvs, env):
@@ -222,20 +238,11 @@ class SeqTaskFrameGroup(TaskFrameGroup):
         for targv in reversed(targvs):
             task_frame = TaskFrame.load(targv[0], ctr.config)
             if task_frame is not None:
-                task_instance = task_frame(ctr, self, targv[1:], dict(env))
+                newenv = envdict()
+                newenv.parent = env
+                task_instance = task_frame(ctr, self, targv[1:], newenv)
                 if task_instance is not None:
                     self.add(task_instance, next_instance)
                     self.set_entryframe(task_instance)
                     next_instance = task_instance
 
-    def perform(self):
-
-        frame = self.entryframe
-
-        out = -1
-        while(frame):
-            # TODO: how to merge envs
-            out = frame.run()
-            frame = self.depends[frame]
-
-        return out
