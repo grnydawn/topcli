@@ -5,6 +5,7 @@
 
 import os
 import shlex
+import shutil
 import pytest
 
 from topcli import main
@@ -15,16 +16,17 @@ home = os.path.abspath(os.path.join(here, ".."))
 def checktempfile(outfile):
     if outfile.isfile():
         out = outfile.size() > 0
+        os.remove(str(outfile))
     elif outfile.isdir():
         out = outfile.join("0.pdf").size() > 0
+        shutil.rmtree(str(outfile))
     else:
         out = False
 
-    outfile.remove()
     return out
 
 def cmdnorm(cmd):
-    return cmd.replace("\n", " ").replace("\\", " ")
+    return cmd.replace("\n", " ").replace("\\", "/")
 
 @pytest.fixture(scope="session")
 def outfile(tmpdir_factory):
@@ -36,19 +38,20 @@ def outfile(tmpdir_factory):
 
 def test_mpl(outfile):
     cmdline = """
-        tasks/mpl.py \
-        "pd.read_csv('data/wetdepa.slope.csv', delimiter=';', header=None)" \
-        --calc "hwcs=D[0].iloc[:,2].drop_duplicates().values" \
-        --pages "len(hwcs)" \
-        --page-calc "HWC=D[0].loc[D[0].iloc[:,2]==hwcs[page_num],:]" \
-        -p "plot@HWC.iloc[:,3].values, HWC.iloc[:,4].values" \
-        -t "hwcs[page_num]" \
-        -x "label@'elapsed time(0: start, 1: end)'" \
-        -y  "label@'event'" \
-        --noshow \
+        tasks/mpl.py
+        "pd.read_csv('data/wetdepa.slope.csv', delimiter=';', header=None)"
+        --calc "hwcs=D[0].iloc[:,2].drop_duplicates().values"
+        --pages "len(hwcs)"
+        --page-calc "HWC=D[0].loc[D[0].iloc[:,2]==hwcs[page_num],:]"
+        -p "plot@HWC.iloc[:,3].values, HWC.iloc[:,4].values"
+        -t "hwcs[page_num]"
+        -x "label@'elapsed time(0: start, 1: end)'"
+        -y  "label@'event'"
+        --noshow 
         --save "'%s'"
-"""%outfile
+"""%str(outfile)
 
+    import pdb; pdb.set_trace()
     """
    perform group fold
    -o "tnew@'-t', '--title', metavar='title', help='title  plotting.'"
