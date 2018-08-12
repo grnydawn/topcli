@@ -47,11 +47,10 @@ def test_mpl(outfile):
         -t "hwcs[page_num]"
         -x "label@'elapsed time(0: start, 1: end)'"
         -y  "label@'event'"
-        --noshow 
+        --noshow
         --save "'%s'"
 """%str(outfile)
 
-    import pdb; pdb.set_trace()
     """
    perform group fold
    -o "tnew@'-t', '--title', metavar='title', help='title  plotting.'"
