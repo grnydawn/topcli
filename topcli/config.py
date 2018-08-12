@@ -14,6 +14,7 @@ class Config(object):
         self.paths = {}
 
         homedir = os.path.join(os.path.expanduser("~"), ".topcli")
+        self.paths['homedir'] = homedir
 
         # home directory
         if not os.path.isdir(homedir):
@@ -31,6 +32,7 @@ class Config(object):
 
         # task directory
         taskdir = os.path.join(homedir, "task")
+        self.paths['taskdir'] = taskdir
         if not os.path.isdir(taskdir):
             os.makedirs(taskdir)
 
@@ -48,6 +50,10 @@ class Config(object):
         if "names" not in self.taskconfig:
             self.taskconfig["names"] = {}
 
+        # defined aliases
+        if "aliases" not in self.taskconfig:
+            self.taskconfig["aliases"] = {}
+
         self.tasks = {}
 
 #        for entry in os.listdir(taskdir):
@@ -62,5 +68,9 @@ class Config(object):
 #                import pdb; pdb.set_trace()
 
     def dump(self):
-        # dump topconfig and taskconfig
-        pass
+
+        with open(self.paths["topconfig"], 'w') as f:
+            json.dump(self.topconfig, f, indent=4)
+
+        with open(self.paths["taskconfig"], 'w') as f:
+            json.dump(self.taskconfig, f, indent=4)

@@ -8,10 +8,6 @@ class TaskController(object):
         self.config = config
         self.subframes = []
 
-    def register(self, frame):
-
-        self.subframes.append(frame)
-
     def run(self, instance):
 
         return instance.run()

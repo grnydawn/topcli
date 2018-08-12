@@ -10,15 +10,16 @@ PY3 = sys.version_info >= (3, 0)
 
 def name_match(pat, names):
     match = []
-    p = pat.split(".")
+    p = [x.strip() for x in pat.split(".")]
     for name in names:
-        n = name.split(".")
+        match.append(name)
+        n = [x.strip() for x in name.split(".")]
         if len(p) > len(n):
-            return []
+            break
         for a, b in zip(p, n[:len(p)]):
             if a != b:
-                return []
-        match.append(name)
+                match.pop()
+                break
     return match
 
 class envdict(dict):

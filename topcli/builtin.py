@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import zipfile
 
-from .util import PY3
+from .util import PY3, name_match
 from .frame import TaskFrame, TaskFrameUnit
 
 if PY3:
@@ -144,6 +144,162 @@ class GroupTaskFrame(TaskFrameUnit):
 
         shutil.rmtree(tmpdir)
 
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+class InstallTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        # copy task definition into topcli home directory and set name mapping
+
+        self.targs = self.parser.parse_args(argv)
+
+        if len(self.targs.data) != 2:
+            self.error_exit("'install' task requires two positional arguments.")
+
+        self.task_name = self.targs.data.pop(0)
+        self.task_namepath = [s.strip() for s in self.task_name.split(".")]
+        self.task_loc = self.targs.data.pop(0)
+
+        if len(self.task_namepath) != 3:
+            self.error_exit("""
+Task name should have a form of 'name3.name2.name1', but '%s' has two subnames only.
+You may only use 'name3' or 'name3.name2' to launch this task if not confused."""%self.task_name)
+
+        if self.task_namepath[0] in builtin_taskframes:
+            self.error_exit("""
+Task subname, '%s' is already used as a builtin task name.
+%s are current builtin task names.
+Please choose a task subname other than above builitin task names."""%(self.task_namepath[0], builtin_taskframes.keys()))
+
+    def perform(self):
+
+        task_instance = TaskFrame.load(self.task_loc, [], self.ctr, self, self.env)
+
+        if task_instance:
+
+            root, base = os.path.split(task_instance.turl)
+
+            taskdir = self.ctr.config.paths['taskdir']
+            taskconfig = self.ctr.config.taskconfig
+            taskname = self.task_name.replace(".", "_")
+            dst = os.path.join(taskdir, "%s_%s"%(taskname, base))
+
+            if os.path.exists(dst):
+                self.error_exit("'%s' already exists."%self.task_name)
+
+            if os.path.isfile(task_instance.turl):
+                shutil.copyfile(task_instance.turl, dst)
+            elif os.path.isdir(task_instance.turl):
+                shutil.copy(task_instance.turl, dst)
+
+            taskconfig["names"][self.task_name] = dst
+
+        # if passed, copy and revise METAFILE
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+class UninstallTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        # copy task definition into topcli home directory and set name mapping
+
+        self.targs = self.parser.parse_args(argv)
+
+        if len(self.targs.data) != 1:
+            self.error_exit("'uninstall' task requires only one positional arguments.")
+
+        self.task_name = self.targs.data.pop(0)
+        self.task_namepath = [s.strip() for s in self.task_name.split(".")]
+
+        if self.task_name in builtin_taskframes:
+            self.error_exit("Builtin task, '%s' can not be uninstalled."%self.task_name)
+
+    def perform(self):
+
+        frame_names = name_match(self.task_name, self.ctr.config.taskconfig["names"])
+
+        if len(frame_names) == 1:
+            frame_name = frame_names[0]
+            frame = self.ctr.config.taskconfig["names"][frame_name]
+            if not os.path.exists(frame):
+                TaskFrame.error_exit("Task named '%s' is not found."%self.task_name)
+            if os.path.isfile(frame):
+                os.remove(frame)
+            elif os.path.isdir(frame):
+                shutil.rmtree(frame)
+            del self.ctr.config.taskconfig["names"][frame_name]
+        elif len(frame_names) > 1:
+            TaskFrame.error_exit("Given task name, '%s', matches multiple tasks: %s"%(self.task_name, str(frame_names)))
+        elif len(frame_names) == 0:
+            TaskFrame.error_exit("Given task name, '%s', does not match any installed tasks"%self.task_name)
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+class AliasTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        #perform alias fold --macro "ss@D[0]"
+        self.parser.add_argument('-m', '--macro', action='append', help='macro definition.')
+
+        self.targs = self.parser.parse_args(argv)
+
+        if len(self.targs.data) != 1:
+            self.error_exit("'group' task requires only one positional argument.")
+
+        self.alias_name = self.targs.data.pop(0)
+        if self.alias_name in self.ctr.config.taskconfig["aliases"]:
+            # TODO check if it matches with builtin and installed task name
+            self.error_exit("Alias name, '%s', already exists."%self.alias_name)
+
+        # TODO: builtin name, installed task
+
+    def perform(self):
+
+        cmds = []
+
+        frame = self.parent.depends[self]
+        while frame:
+            tcmds = []
+            tcmds.append(frame.turl)
+            tcmds.extend(frame.targv)
+            cmds.append(tcmds)
+            frame = self.parent.depends[frame]
+
+        self.ctr.config.taskconfig["aliases"][self.alias_name] = [self.targs.macro, cmds]
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+class UnaliasTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        self.targs = self.parser.parse_args(argv)
+
+        if len(self.targs.data) != 1:
+            self.error_exit("'unalias' task requires only one positional arguments.")
+
+        self.alias_name = self.targs.data.pop(0)
+
+        if self.alias_name not in self.ctr.config.taskconfig["aliases"]:
+            self.error_exit("No alias name of '%s' is found.."%self.alias_name)
+
+    def perform(self):
+
+        del self.ctr.config.taskconfig["aliases"][self.alias_name]
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
 builtin_taskframes = {
-    "group":      GroupTaskFrame,
+    "group":        GroupTaskFrame,
+    "install":      InstallTaskFrame,
+    "uninstall":    UninstallTaskFrame,
+    "alias":        AliasTaskFrame,
+    "unalias":      UnaliasTaskFrame,
 }

@@ -101,6 +101,22 @@ class TaskFrame(object, ):
 
     @classmethod
     def load(cls, url, argv, ctr, parent, env):
+
+#        def _match_framename(path, tasks):
+#            fnames = []
+#            s = [i.strip() for i in path.split(".")]
+#            lens = len(s)
+#            for task in tasks:
+#                t = task.split(".")
+#                lent = len(t)
+#                if lent < lens: continue
+#                fnames.append(task)
+#                for u, v in zip(s, t[:lens]):
+#                    if u != v:
+#                        fnames.pop()
+#                        break
+#            return fnames
+
         o = urlparse(url)
 
         newenv = envdict()
@@ -119,14 +135,20 @@ class TaskFrame(object, ):
                         ctr, parent, argv, newenv)
 
             # loaded task
-            if o.path in ctr.config.tasks:
-                frame = ctr.config.tasks[o.path]
-                return frame(ctr, parent, o.path, argv, newenv)
+            frame_names = name_match(o.path, ctr.config.tasks)
+            if len(frame_names) == 1:
+                frame_name = frame_names[0]
+                frame = ctr.config.tasks[frame_name]
+                return frame(ctr, parent, frame_name, argv, newenv)
+            elif len(frame_names) > 1:
+                cls.error_exit("Given task name, '%s', matches multiple tasks: %s"%(o.path, str(frame_names)))
 
             # installed task
-            if o.path in ctr.config.taskconfig["names"]:
-                if os.path.exists(ctr.config.taskconfig["names"][o.path]):
-                    npath = ctr.config.taskconfig["names"][o.path]
+            frame_names = name_match(o.path, ctr.config.taskconfig["names"])
+            if len(frame_names) == 1:
+                frame_name = frame_names[0]
+                if os.path.exists(ctr.config.taskconfig["names"][frame_name]):
+                    npath = ctr.config.taskconfig["names"][frame_name]
                     npath = os.path.abspath(npath)
                     if is_taffile(npath):
                         return TafTaskFrameGroup(ctr, parent, npath, argv, newenv)
@@ -134,20 +156,27 @@ class TaskFrame(object, ):
                         return cls.load_from_path(npath, o.fragment, ctr, parent, argv, newenv)
                 else:
                     import pdb; pdb.set_trace()
+            elif len(frame_names) > 1:
+                cls.error_exit("Given task name, '%s', matches multiple tasks: %s"%(o.path, str(frame_names)))
 
-            # shorten name match with loaded tasks
-            match = name_match(o.path, ctr.config.tasks.keys())
-            if match:
-                import pdb; pdb.set_trace()
+            if o.path in ctr.config.taskconfig["aliases"]:
+                macros, cmds = ctr.config.taskconfig["aliases"][o.path]
+                mdefs = dict( map(lambda x: x.strip(), m.split("@")) for m in macros)
+                for k in mdefs:
+                    mdefs[k] = eval(mdefs[k], {}, {"D": argv})
+                for gidx in range(len(cmds)):
+                    gargv = cmds[gidx]
+                    for tidx in range(len(gargv)):
+                        gargv[tidx] = gargv[tidx]%mdefs
 
-            # shorten name match with installed tasks
-            match = name_match(o.path, ctr.config.taskconfig["names"].keys())
-            if match:
-                import pdb; pdb.set_trace()
+                if len(cmds) > 1:
+                    return ShellTaskFrameGroup(ctr, parent, "", cmds, env)
+                elif len(cmds) == 1:
+                    return TaskFrame.load(cmds[0][0], cmds[0][1:], ctr, parent, env)
+                else:
+                    cls.error_exit("Alias, '%', does not match with any task."%o.path)
 
-    def register(self, frame):
-
-        self.subframes.append(frame)
+        cls.error_exit("Task name, '%s', was not found."%url)
 
     def run(self):
 
@@ -183,7 +212,8 @@ class TaskFrame(object, ):
     def perform(self):
         pass
 
-    def error_exit(self, msg):
+    @classmethod
+    def error_exit(cls, msg):
         # TODO: coordinate with self.ctr
 
         print("ERROR: "+msg)
@@ -550,4 +580,5 @@ class ShellTaskFrameGroup(TaskFrameGroup):
                 self.add(task_instance, next_instance)
                 self.set_entryframe(task_instance)
                 next_instance = task_instance
+        self.subframes.reverse()
 
