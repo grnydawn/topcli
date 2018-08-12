@@ -326,7 +326,7 @@ class MPLTask(topcli.TaskFrameUnit):
                     else:
                         self.error_exit("The synaxt error near '@': %s"%axes_arg)
 
-                    getattr(ax, funcname)(*vargs, **kwargs)
+                    getattr(axis, funcname)(*vargs, **kwargs)
 
             elif not self.env['plots']:
                 if self.targs.figure or self.targs.pandas:
@@ -351,15 +351,12 @@ class MPLTask(topcli.TaskFrameUnit):
                                 os.makedirs(name)
                         else:
                             os.makedirs(name)
-                            
+
                         name = os.path.join(name, str(self.env['page_num'])+".pdf")
                         #root, ext = os.path.splitext(name)
                         #name = os.path.join(root, '%s-%d%s'%(self.env['page_num'], ext))
 
                     self.env["figure"].savefig(name, *vargs, **kwargs)
-
-            #if self.env["B"]:
-            #    self.env["B"].savefig(figure=self.env["figure"])
 
             # displyaing an image on screen
             if not self.targs.noshow:

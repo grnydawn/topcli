@@ -43,6 +43,11 @@ class GroupTaskFrame(TaskFrameUnit):
 
     def perform(self):
 
+        def _u(text):
+            _u.cnt += 1
+            return "%s.%d"%(text, _u.cnt)
+        _u.cnt = 0
+
         # check if ...
         if not isinstance(self.parent, TaskFrame) or \
             len(self.parent.subframes) < 2:
@@ -60,7 +65,7 @@ class GroupTaskFrame(TaskFrameUnit):
                 split = [s.strip() for s in option_arg.split("@")]
                 items = split[:-1]
                 if len(items) == 1:
-                    meta.set('OPTION', items[0], split[-1])
+                    meta.set('OPTION', _u(items[0]), split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%option_arg)
 
@@ -72,10 +77,10 @@ class GroupTaskFrame(TaskFrameUnit):
                 items = split[:-1]
                 if len(items) == 0:
                     #meta.set('REPLACE', "'*'", str((vargs, kwargs)))
-                    meta.set('REPLACE', '*', split[-1])
+                    meta.set('REPLACE', _u('*'), split[-1])
                 elif len(items) == 1:
                     #meta.set('REPLACE', "'%s'"%items[0], str((vargs, kwargs)))
-                    meta.set('REPLACE', items[0], split[-1])
+                    meta.set('REPLACE', _u(items[0]), split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%replace_arg)
 
@@ -86,9 +91,9 @@ class GroupTaskFrame(TaskFrameUnit):
                 #items, vargs, kwargs = self.teval_atargs(append_arg)
                 items = split[:-1]
                 if len(items) == 0:
-                    meta.set('APPEND', '*', split[-1])
+                    meta.set('APPEND', _u('*'), split[-1])
                 elif len(items) == 1:
-                    meta.set('APPEND', items[0], split[-1])
+                    meta.set('APPEND', _u(items[0]), split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%append_arg)
 
@@ -100,9 +105,9 @@ class GroupTaskFrame(TaskFrameUnit):
                 items = split[:-1]
                 if len(items) == 0:
                     #meta.set('DELETE', "'*'", str((vargs, kwargs)))
-                    meta.set('DELETE', '*', split[-1])
+                    meta.set('DELETE', _u('*'), split[-1])
                 elif len(items) == 1:
-                    meta.set('DELETE', items[0], split[-1])
+                    meta.set('DELETE', _u(items[0]), split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%delete_arg)
 

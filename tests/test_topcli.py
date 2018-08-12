@@ -49,8 +49,33 @@ def test_mpl(outfile):
         --save "'%s'"
 """%outfile
 
-#   print(cmdline); assert False
-#   perform group fold -o "title@'-t', '--title', metavar='title', action='append', help='title  plotting.'" -r "1@'data=data'" -r "1@'-t#1=title'" -- tasks/mpl.py         "pd.read_csv('data/wetdepa.slope.csv', delimiter=';', header=None)"         --calc "hwcs=D[0].iloc[:,2].drop_duplicates().values"         --pages "len(hwcs)"         --page-calc "HWC=D[0].loc[D[0].iloc[:,2]==hwcs[page_num],:]"         -p "plot@HWC.iloc[:,3].values, HWC.iloc[:,4].values"         -t "hwcs[page_num]"         -x "label@'elapsed time(0: start, 1: end)'"         -y  "label@'event'"
+    """
+   perform group fold
+   -o "tnew@'-t', '--title', metavar='title', help='title  plotting.'"
+   -r "2@'data=data'"
+   -r "2@'-t#0=tnew'"
+   --
+   tasks/mpl.py
+   --figure "text@0.25, 0.5,'Folding Report', fontsize=30"
+   --axes "axis@'off'"
+   --
+   tasks/mpl.py
+   "pd.read_csv('data/wetdepa.slope.csv', delimiter=';', header=None)"
+   --calc "hwcs=D[0].iloc[:,2].drop_duplicates().values"
+   --pages "len(hwcs)"
+   --page-calc "HWC=D[0].loc[D[0].iloc[:,2]==hwcs[page_num],:]"
+   -p "plot@HWC.iloc[:,3].values, HWC.iloc[:,4].values"
+   -t "'ORIGINAL TITLE'"
+   --
+   tasks/mpl.py
+   --figure "text@0.3, 0.5, 'Thank You', fontsize=30"
+   --axes "axis@'off'"
+"""
+#   perform group fold -o "tnew@'-t', '--title', metavar='title', help='title  plotting.'" -r "2@'data=data'" -r "2@'-t#0=tnew'" -- tasks/mpl.py --figure "text@0.25, 0.5,'Folding Report', fontsize=30" --axes "axis@'off'" -- tasks/mpl.py "pd.read_csv('data/wetdepa.slope.csv', delimiter=';', header=None)" --calc "hwcs=D[0].iloc[:,2].drop_duplicates().values" --pages "len(hwcs)" --page-calc "HWC=D[0].loc[D[0].iloc[:,2]==hwcs[page_num],:]" -p "plot@HWC.iloc[:,3].values, HWC.iloc[:,4].values" -t "'ORIGINAL TITLE'" -- tasks/mpl.py --figure "text@0.3, 0.5, 'Thank You', fontsize=30" --axes "axis@'off'"
+#   perform  fold.taf "pd.read_csv('data/wetdepa.reduced.slope.csv', delimiter=';', header=None)" -t "'ttt'"
+
+
+# NOTE: use promote to share object between tasks
 
     output = main(shlex.split(cmdnorm(cmdline)))
     assert checktempfile(outfile)

@@ -350,10 +350,11 @@ class TafTaskFrameGroup(TaskFrameGroup):
             optmap[act.dest] = act.dest
 
         for option in meta.options("OPTION"):
+            oid = option.split(".")[0]
             vargs, kwargs = self.teval_args(meta.get("OPTION", option))
             self.parser.add_argument(*vargs, **kwargs)
             dest = self.parser._actions[-1].dest
-            optmap[dest] = option
+            optmap[dest] = oid
 
         # parser taf options
         self.targs = self.parser.parse_args(argv)
@@ -374,11 +375,12 @@ class TafTaskFrameGroup(TaskFrameGroup):
 
         # replace task options
         # syntax: tid@rname#loc=gname
-        for rid in meta.options("REPLACE"):
+        for replace in meta.options("REPLACE"):
+            rid = replace.split(".")[0]
             for tid, tops in topts.items():
                 if rid == tid or rid == "*":
 
-                    dest, loc, sname =  _parse(tobjs[tid], meta, "REPLACE", rid)
+                    dest, loc, sname =  _parse(tobjs[tid], meta, "REPLACE", replace)
                     tparser = tobjs[tid].parser
                     action_name = get_action_name(tparser, dest)
                     nargs = get_nargs(tparser, dest)
@@ -433,11 +435,12 @@ class TafTaskFrameGroup(TaskFrameGroup):
         # TODO: set None to deleted items, and remove them later
 
 
-        for did in meta.options("DELETE"):
+        for delete in meta.options("DELETE"):
+            did = delete.split(".")[0]
             for tid, tops in topts.items():
                 if did == tid or did == "*":
 
-                    dest, loc, sname =  _parse(tobjs[tid], meta, "DELETE", did)
+                    dest, loc, sname =  _parse(tobjs[tid], meta, "DELETE", delete)
                     tparser = tobjs[tid].parser
                     action_name = get_action_name(tparser, dest)
                     nargs = get_nargs(tparser, dest)
@@ -480,11 +483,12 @@ class TafTaskFrameGroup(TaskFrameGroup):
         # syntax: tid@gname
 
         # TODO: append may not need option from --option option.
-        for aid in meta.options("APPEND"):
+        for append in meta.options("APPEND"):
+            aid = append.split(".")[0]
             for tid, tops in topts.items():
                 if aid == tid or aid == "*":
 
-                    dest, loc, sname =  _parse(tobjs[tid], meta, "APPEND", aid)
+                    dest, loc, sname =  _parse(tobjs[tid], meta, "APPEND", append)
                     tparser = tobjs[tid].parser
                     action_name = get_action_name(tparser, dest)
                     nargs = get_nargs(tparser, dest)
@@ -519,7 +523,7 @@ class TafTaskFrameGroup(TaskFrameGroup):
                     idx += 1
 
         targvs = []
-        for tid, tasktmp in tobjs.items():
+        for tid, tasktmp in sorted(tobjs.items()):
             targvs.append([tasktmp.turl] + topts[tid])
 
         #import pdb; pdb.set_trace()
