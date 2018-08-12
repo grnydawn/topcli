@@ -163,7 +163,10 @@ class TaskFrame(object, ):
                 macros, cmds = ctr.config.taskconfig["aliases"][o.path]
                 mdefs = dict( map(lambda x: x.strip(), m.split("@")) for m in macros)
                 for k in mdefs:
-                    mdefs[k] = eval(mdefs[k], {}, {"D": argv})
+                    try:
+                        mdefs[k] = eval(mdefs[k], {}, {"D": argv})
+                    except Exception as err:
+                        cls.error_exit("evaluation of '%s' with '%s' is failed. ('%s')"%(mdefs[k], str(argv), str(err)))
                 for gidx in range(len(cmds)):
                     gargv = cmds[gidx]
                     for tidx in range(len(gargv)):
@@ -176,7 +179,7 @@ class TaskFrame(object, ):
                 else:
                     cls.error_exit("Alias, '%', does not match with any task."%o.path)
 
-        cls.error_exit("Task name, '%s', was not found."%url)
+        cls.error_exit("Task name, '%s', is not found."%url)
 
     def run(self):
 
@@ -186,8 +189,11 @@ class TaskFrame(object, ):
         data = []
         if self.targs.data:
             for d in self.targs.data:
-                obj = self.teval(d)
-                data.append(obj)
+                try:
+                    obj = self.teval(d)
+                    data.append(obj)
+                except Exception as err:
+                    self.error_exit("Input data, '%s', error: %s"%(str(d), str(err)))
         self.env["D"] = data
 
         if self.targs.calc:

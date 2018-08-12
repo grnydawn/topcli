@@ -8,6 +8,7 @@ import json
 class Config(object):
 
     metafile = "METAFILE"
+    histfile = "HISTFILE"
 
     def __init__(self):
 
@@ -38,7 +39,7 @@ class Config(object):
 
         metafile = os.path.join(taskdir, self.metafile)
         if not os.path.isfile(metafile):
-            metadata = {"test": 1} # task metadata
+            metadata = {"__test__": 1} # task metadata
             with open(metafile, 'w') as f:
                 json.dump(metadata, f, indent=4)
 
@@ -55,6 +56,16 @@ class Config(object):
             self.taskconfig["aliases"] = {}
 
         self.tasks = {}
+
+        histfile = os.path.join(homedir, self.histfile)
+        if not os.path.isfile(histfile):
+            histdata = {"list": []}
+            with open(histfile, 'w') as f:
+                json.dump(histdata, f, indent=4)
+
+        self.paths["histconfig"] = histfile
+        with open(histfile, 'r') as f:
+            self.histconfig = json.load(f)
 
 #        for entry in os.listdir(taskdir):
 #            taskpath = os.path.join(taskdir, entry)
@@ -74,3 +85,6 @@ class Config(object):
 
         with open(self.paths["taskconfig"], 'w') as f:
             json.dump(self.taskconfig, f, indent=4)
+
+        with open(self.paths["histconfig"], 'w') as f:
+            json.dump(self.histconfig, f, indent=4)

@@ -21,7 +21,8 @@ def main(argv):
 
     def _show_usage():
         # TODO: may use textwrap dedent
-        print("Usage: perform task [arguments] [-- task [arguments]] ...")
+        print("perform version 0.1.0")
+        print("Usage: perform <task> [arguments] [-- <task> [arguments]] ...")
 
     # handle entry options
     if not argv or argv[0] in ("-h", "--help"):
@@ -32,6 +33,12 @@ def main(argv):
         sys.exit(0)
 
     config = Config()
+
+    if argv and len(argv) > 0 and argv[0] != "history":
+        config.histconfig["list"].append(argv)
+
+    if argv and len(argv) > 1 and argv[0] == "history" and argv[1].isdigit():
+        argv = config.histconfig["list"][int(argv[int(argv[1].isdigit())])]
 
     # load builtin tasks
     config.tasks.update(builtin_taskframes)

@@ -248,13 +248,18 @@ class AliasTaskFrame(TaskFrameUnit):
 
         self.targs = self.parser.parse_args(argv)
 
-        if len(self.targs.data) != 1:
-            self.error_exit("'group' task requires only one positional argument.")
+        if len(self.targs.data) == 1:
+            self.alias_name = self.targs.data.pop(0)
 
-        self.alias_name = self.targs.data.pop(0)
-        if self.alias_name in self.ctr.config.taskconfig["aliases"]:
-            # TODO check if it matches with builtin and installed task name
-            self.error_exit("Alias name, '%s', already exists."%self.alias_name)
+            if self.alias_name in self.ctr.config.taskconfig["aliases"]:
+                # TODO check if it matches with builtin and installed task name
+                self.error_exit("Alias name, '%s', already exists."%self.alias_name)
+
+        elif len(self.targs.data) > 1:
+            self.error_exit("'group' task requires only one positional argument.")
+        else:
+            self.alias_name = None
+            print("aliased task(s): %s"%", ".join(self.ctr.config.taskconfig["aliases"].keys()))
 
         # TODO: builtin name, installed task
 
@@ -262,15 +267,17 @@ class AliasTaskFrame(TaskFrameUnit):
 
         cmds = []
 
-        frame = self.parent.depends[self]
-        while frame:
-            tcmds = []
-            tcmds.append(frame.turl)
-            tcmds.extend(frame.targv)
-            cmds.append(tcmds)
-            frame = self.parent.depends[frame]
+        if hasattr(self.parent, "depends"):
+            frame = self.parent.depends[self]
+            while frame:
+                tcmds = []
+                tcmds.append(frame.turl)
+                tcmds.extend(frame.targv)
+                cmds.append(tcmds)
+                frame = self.parent.depends[frame]
 
-        self.ctr.config.taskconfig["aliases"][self.alias_name] = [self.targs.macro, cmds]
+        if self.alias_name:
+            self.ctr.config.taskconfig["aliases"][self.alias_name] = [self.targs.macro, cmds]
 
         if hasattr(self.parent, "depends"):
             self.parent.depends[self] = None
@@ -296,10 +303,26 @@ class UnaliasTaskFrame(TaskFrameUnit):
         if hasattr(self.parent, "depends"):
             self.parent.depends[self] = None
 
+class HistoryTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        self.targs = self.parser.parse_args(argv)
+
+    def perform(self):
+
+        for idx, hist in enumerate(self.ctr.config.histconfig["list"]):
+            print(" %d  %s"%(idx, " ".join(hist)))
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+
 builtin_taskframes = {
     "group":        GroupTaskFrame,
     "install":      InstallTaskFrame,
     "uninstall":    UninstallTaskFrame,
     "alias":        AliasTaskFrame,
     "unalias":      UnaliasTaskFrame,
+    "history":      HistoryTaskFrame,
 }
