@@ -137,7 +137,7 @@ class GroupTaskFrame(TaskFrameUnit):
 
         taf = self.targs.output
         if taf is None:
-            taf = "%s.taf"%self.group_name
+            taf = self.group_name
 
         with zipfile.ZipFile(taf, 'w', allowZip64=True) as zf:
             addToZip(zf, tmpdir, '')
