@@ -63,7 +63,8 @@ def main(argv):
     if instance:
         retval = ctr.run(instance)
     else:
-        reetval = -1
+        print("ERROR: execution failed.")
+        retval = -1
 
     config.dump()
 

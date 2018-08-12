@@ -45,12 +45,12 @@ class envdict(dict):
     def keys(self):
         k1 = super(envdict, self).keys()
         k2 = self.parent.keys() if isinstance(self.parent, envdict) else []
-        return k1 + k2
+        return list(k1) + k2
 
     def values(self):
         v1 = super(envdict, self).values()
         v2 = self.parent.values() if isinstance(self.parent, envdict) else []
-        return v1 + v2
+        return list(v1) + v2
 
     def __iter__(self):
         for k in self.keys():
@@ -74,7 +74,7 @@ def is_taffile(path):
         tmeta = taf.getinfo("METAFILE")
         with taf.open("METAFILE") as mf:
             firstline = mf.readline().strip()
-            return firstline == "[MAGIC_TOPCLI]"
+            return firstline == b"[MAGIC_TOPCLI]"
     except KeyError:
         return False
 
@@ -86,16 +86,20 @@ def extract_taffile(path):
 
     return tmpdir
 
-def dest_name(arg):
-    if arg.startswith("--"):
-        name = arg[2:]
-    elif arg.startswith("-"):
-        name = arg[1:]
-    else:
-        name = arg
-    return name.replace("-", "_")
-    
+def get_dest(parser, arg):
+    # _StoreAction, _AppendAction
+    for act in parser._actions:
+        if arg in act.option_strings or \
+            (arg == "data" and act.dest == "data"):
+            return act.dest
+    return None
+
 def get_nargs(parser, dest):
     for act in parser._actions:
         if act.dest == dest:
             return act.nargs
+
+def get_action_name(parser, dest):
+    for act in parser._actions:
+        if act.dest == dest:
+            return act.__class__.__name__

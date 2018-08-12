@@ -10,7 +10,7 @@ class MPLTask(topcli.TaskFrameUnit):
     def __init__(self, ctr, parent, url, argv, env):
 
         self.parser.add_argument('-f', metavar='figure creation', help='define a figure for plotting.')
-        self.parser.add_argument('-t', '--title', metavar='title', action='append', help='title  plotting.')
+        self.parser.add_argument('-t', '--title', metavar='title', help='title  plotting.')
         self.parser.add_argument('-p', '--plot', metavar='plot type', action='append', help='plot type for plotting.')
         self.parser.add_argument('-s', '--save', metavar='save', action='append', help='file path to save png image.')
         self.parser.add_argument('-x', '--xaxis', metavar='xaxis', action='append', help='axes function wrapper for x axis settings.')
@@ -50,7 +50,7 @@ class MPLTask(topcli.TaskFrameUnit):
             self.env["pandas"] = self.env["pd"] = pandas
         except ImportError as err:
             pass
-        
+
     def perform(self):
 
         # pages setting
@@ -99,7 +99,7 @@ class MPLTask(topcli.TaskFrameUnit):
                             subplot = self.env['figure'].add_subplot(*vargs, **kwargs)
                         else:
                             subplot = self.env['figure'].add_subplot(111, **kwargs)
-                
+
                         try:
                             self.env[subpname] = subplot
                         except Exception as err:
@@ -190,19 +190,18 @@ class MPLTask(topcli.TaskFrameUnit):
 
             # title setting
             if self.targs.title:
-                for title_arg in self.targs.title:
-                    # syntax: [axname[,axname...]@]funcargs
-                    items, vargs, kwargs = self.teval_atargs(title_arg)
+                # syntax: [axname[,axname...]@]funcargs
+                items, vargs, kwargs = self.teval_atargs(self.targs.title)
 
-                    if len(items) == 0:
-                        axes = [self.env["ax"]]
-                    elif len(items) == 1:
-                        axes = [self.env[items[0]]]
-                    else:
-                        self.error_exit("The synaxt error near '@': %s"%title_arg)
+                if len(items) == 0:
+                    axes = [self.env["ax"]]
+                elif len(items) == 1:
+                    axes = [self.env[items[0]]]
+                else:
+                    self.error_exit("The synaxt error near '@': %s"%self.targs.title)
 
-                    for ax in axes:
-                        ax.set_title(*vargs, **kwargs)
+                for ax in axes:
+                    ax.set_title(*vargs, **kwargs)
 
             # x-axis setting
             if self.targs.xaxis:

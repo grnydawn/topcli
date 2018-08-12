@@ -9,7 +9,7 @@ import tempfile
 import zipfile
 
 from .util import PY3
-from .frame import TaskFrameUnit
+from .frame import TaskFrame, TaskFrameUnit
 
 if PY3:
     import configparser
@@ -35,11 +35,18 @@ class GroupTaskFrame(TaskFrameUnit):
         self.targs = self.parser.parse_args(argv)
 
         if len(self.targs.data) != 1:
-            self.error_exit("'group' task requires one positional argument.")
+            self.error_exit("'group' task requires only one positional argument.")
 
-        self.group_name = self.targs.data.pop()
+        self.group_name = self.targs.data.pop(0)
+        self.data_args = self.targs.data
+        self.targs.data = []
 
     def perform(self):
+
+        # check if ...
+        if not isinstance(self.parent, TaskFrame) or \
+            len(self.parent.subframes) < 2:
+            self.error_exit("No task to group was found.")
 
         meta = configparser.ConfigParser()
 
@@ -50,42 +57,52 @@ class GroupTaskFrame(TaskFrameUnit):
         meta.add_section('OPTION')
         if self.targs.option:
             for option_arg in self.targs.option:
-                items, vargs, kwargs = self.teval_atargs(option_arg)
+                split = [s.strip() for s in option_arg.split("@")]
+                items = split[:-1]
                 if len(items) == 1:
-                    meta.set('OPTION', str(tuple(items[0])), (vargs, kwargs))
+                    meta.set('OPTION', items[0], split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%option_arg)
 
         meta.add_section('REPLACE')
         if self.targs.replace:
             for replace_arg in self.targs.replace:
-                items, vargs, kwargs = self.teval_atargs(replace_arg)
-                if len(items) == 1:
-                    meta.set('REPLACE', str(tuple(["'*'", items[0]])), (vargs, kwargs))
-                elif len(items) == 2:
-                    meta.set('REPLACE', str(tuple(items)), (vargs, kwargs))
+                split = [s.strip() for s in replace_arg.split("@")]
+                #vargs, kwargs = self.parse_args(split[-1])
+                items = split[:-1]
+                if len(items) == 0:
+                    #meta.set('REPLACE', "'*'", str((vargs, kwargs)))
+                    meta.set('REPLACE', '*', split[-1])
+                elif len(items) == 1:
+                    #meta.set('REPLACE', "'%s'"%items[0], str((vargs, kwargs)))
+                    meta.set('REPLACE', items[0], split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%replace_arg)
 
         meta.add_section('APPEND')
         if self.targs.append:
             for append_arg in self.targs.append:
-                items, vargs, kwargs = self.teval_atargs(append_arg)
+                split = [s.strip() for s in append_arg.split("@")]
+                #items, vargs, kwargs = self.teval_atargs(append_arg)
+                items = split[:-1]
                 if len(items) == 0:
-                    meta.set('APPEND', str(tuple("'*'")), (vargs, kwargs))
+                    meta.set('APPEND', '*', split[-1])
                 elif len(items) == 1:
-                    meta.set('APPEND', str(tuple(items[0])), (vargs, kwargs))
+                    meta.set('APPEND', items[0], split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%append_arg)
 
         meta.add_section('DELETE')
         if self.targs.delete:
             for delete_arg in self.targs.delete:
-                items, vargs, kwargs = self.teval_atargs(delete_arg)
+                split = [s.strip() for s in delete_arg.split("@")]
+                #items, vargs, kwargs = self.teval_atargs(delete_arg)
+                items = split[:-1]
                 if len(items) == 0:
-                    meta.set('DELETE', str(tuple("'*'")), (vargs, kwargs))
+                    #meta.set('DELETE', "'*'", str((vargs, kwargs)))
+                    meta.set('DELETE', '*', split[-1])
                 elif len(items) == 1:
-                    meta.set('DELETE', str(tuple(items[0])), (vargs, kwargs))
+                    meta.set('DELETE', items[0], split[-1])
                 else:
                     self.error_exit("Wrong syntax near '%s'."%delete_arg)
 
@@ -99,7 +116,7 @@ class GroupTaskFrame(TaskFrameUnit):
             idx += 1
             frame = self.parent.depends[frame]
             if frame:
-                meta.set('TASK', str(idx), [frame.turl] + frame.targv)
+                meta.set('TASK', str(idx), str([frame.turl] + frame.targv))
 
         with open(os.path.join(tmpdir, "METAFILE"), "w") as mf:
             meta.write(mf)
