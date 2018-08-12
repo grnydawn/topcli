@@ -399,7 +399,7 @@ class TafTaskFrameGroup(TaskFrameGroup):
                     targets = []
                     ncnt = 0
                     for idx, top in enumerate(tops):
-                        if (dest == "data" and tops[idx] in tdata[tid]) or \
+                        if (dest == "data" and tops[idx] in tdata[tid] and gopts[dest]) or \
                             optmap.get(get_dest(tparser, tops[idx]), None) == sname:
                             if loc is None or loc == ncnt:
                                 targets.append(idx)
@@ -526,7 +526,6 @@ class TafTaskFrameGroup(TaskFrameGroup):
         for tid, tasktmp in sorted(tobjs.items()):
             targvs.append([tasktmp.turl] + topts[tid])
 
-        #import pdb; pdb.set_trace()
         next_instance = None
 
         for targv in reversed(targvs):
