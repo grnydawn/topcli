@@ -317,6 +317,38 @@ class HistoryTaskFrame(TaskFrameUnit):
         if hasattr(self.parent, "depends"):
             self.parent.depends[self] = None
 
+class ListTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        self.targs = self.parser.parse_args(argv)
+
+    def perform(self):
+
+        print("Installed tasks: %s"%" ".join(self.ctr.config.taskconfig["names"].keys()))
+        print("Aliased   tasks: %s"%" ".join(self.ctr.config.taskconfig["aliases"].keys()))
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
+
+class HelpTaskFrame(TaskFrameUnit):
+
+    def __init__(self, ctr, parent, url, argv, env):
+
+        self.targs = self.parser.parse_args(argv)
+
+        if len(self.targs.data) < 1:
+            self.error_exit("'help' task requires at least one positional arguments.")
+
+        self.target_names = self.targs.data
+        self.targs.data = []
+
+    def perform(self):
+
+        print("Under development.")
+
+        if hasattr(self.parent, "depends"):
+            self.parent.depends[self] = None
 
 builtin_taskframes = {
     "group":        GroupTaskFrame,
@@ -325,4 +357,6 @@ builtin_taskframes = {
     "alias":        AliasTaskFrame,
     "unalias":      UnaliasTaskFrame,
     "history":      HistoryTaskFrame,
+    "list":         ListTaskFrame,
+    "help":         HelpTaskFrame,
 }
