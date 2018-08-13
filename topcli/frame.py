@@ -230,16 +230,19 @@ class TaskFrame(object, ):
             env = dict((k,v) for k,v in self.env.items())
             return eval(expr, env, kwargs)
         except NameError as err:
-            self.error_exit('EVAL: '+str(err))
+            self.error_exit('NAME: '+str(err))
         except TypeError as err:
-            import pdb; pdb.set_trace()
+            self.error_exit('TYPE: '+str(err))
 
     def teval_args(self, argv, **kwargs):
 
         def _p(*argv, **kw_str):
             return list(argv), kw_str
 
-        return self.teval('_p(%s)'%argv, _p=_p, **kwargs)
+        try:
+            return self.teval('_p(%s)'%argv, _p=_p, **kwargs)
+        except SyntaxError as err:
+            self.error_exit("SYNTAX: "+argv)
 
     def teval_atargs(self, expr, **kwargs):
         s = [i.strip() for i in expr.split("@")]

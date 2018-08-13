@@ -35,7 +35,8 @@ def main(argv):
     config = Config()
 
     if argv and len(argv) > 0 and argv[0] != "history":
-        config.histconfig["list"].append(argv)
+        quoteargv = ['"%s"'%a for a in argv]
+        config.histconfig["list"].append(quoteargv)
 
     if argv and len(argv) > 1 and argv[0] == "history" and argv[1].isdigit():
         argv = config.histconfig["list"][int(argv[int(argv[1].isdigit())])]
