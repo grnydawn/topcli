@@ -5,6 +5,7 @@
 import os
 import sys
 import abc
+import copy
 import argparse
 
 from .util import (PY3, name_match, envdict, is_taffile, extract_taffile,
@@ -161,12 +162,17 @@ class TaskFrame(object, ):
 
             if o.path in ctr.config.taskconfig["aliases"]:
                 macros, cmds = ctr.config.taskconfig["aliases"][o.path]
-                mdefs = dict( map(lambda x: x.strip(), m.split("@")) for m in macros)
-                for k in mdefs:
-                    try:
-                        mdefs[k] = eval(mdefs[k], {}, {"D": argv})
-                    except Exception as err:
-                        cls.error_exit("evaluation of '%s' with '%s' is failed. ('%s')"%(mdefs[k], str(argv), str(err)))
+                cmds = copy.deepcopy(cmds)
+                if macros:
+                    mdefs = dict( map(lambda x: x.strip(), m.split("@")) for m in macros)
+                    for k in mdefs:
+                        try:
+                            mdefs[k] = eval(mdefs[k], {}, {"D": argv})
+                        except Exception as err:
+                            cls.error_exit("evaluation of '%s' with '%s' is failed. ('%s')"%(mdefs[k], str(argv), str(err)))
+                else:
+                    mdefs = {}
+
                 for gidx in range(len(cmds)):
                     gargv = cmds[gidx]
                     for tidx in range(len(gargv)):

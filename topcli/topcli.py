@@ -38,8 +38,15 @@ def main(argv):
         quoteargv = ['"%s"'%a for a in argv]
         config.histconfig["list"].append(quoteargv)
 
-    if argv and len(argv) > 1 and argv[0] == "history" and argv[1].isdigit():
-        argv = config.histconfig["list"][int(argv[int(argv[1].isdigit())])]
+    if argv and len(argv) > 1 and argv[0] == "history":
+        if argv[1].isdigit():
+            hid = int(argv[1])
+            argv = []
+            for a in config.histconfig["list"][hid]:
+                argv.append(eval(a))
+        else:
+            print("task 'history' does not expect non-digit input.")
+            sys.exit(-1)
 
     # load builtin tasks
     config.tasks.update(builtin_taskframes)

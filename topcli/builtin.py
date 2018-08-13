@@ -288,17 +288,21 @@ class UnaliasTaskFrame(TaskFrameUnit):
 
         self.targs = self.parser.parse_args(argv)
 
-        if len(self.targs.data) != 1:
-            self.error_exit("'unalias' task requires only one positional arguments.")
+        if len(self.targs.data) == 0:
+            self.error_exit("'unalias' task requires at least one positional arguments.")
 
-        self.alias_name = self.targs.data.pop(0)
+        self.alias_names = self.targs.data
+        self.targs.data = []
 
-        if self.alias_name not in self.ctr.config.taskconfig["aliases"]:
-            self.error_exit("No alias name of '%s' is found.."%self.alias_name)
+        for alias_name in self.alias_names:
+            # TODO: check valid name syntax
+            if alias_name not in self.ctr.config.taskconfig["aliases"]:
+                self.error_exit("No alias name of '%s' is found.."%alias_name)
 
     def perform(self):
 
-        del self.ctr.config.taskconfig["aliases"][self.alias_name]
+        for alias_name in self.alias_names:
+            del self.ctr.config.taskconfig["aliases"][alias_name]
 
         if hasattr(self.parent, "depends"):
             self.parent.depends[self] = None
